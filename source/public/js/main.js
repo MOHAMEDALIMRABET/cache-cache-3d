@@ -239,7 +239,8 @@ resize();
 let world = null;     // { key, map, root, spotObjects, blockers, markers }
 const ents = new Map();
 const fx = [];        // effets (secousses, particules, textes)
-const cam = { yaw: 0, pitch: 0.5, dist: 7 };
+// yaw/pitch = direction voulue ; sYaw/sPitch/sDist/sTarget = valeurs lissées affichées (caméra fluide)
+const cam = { yaw: 0, pitch: 0.5, dist: 7, sYaw: 0, sPitch: 0.5, sDist: 7, sTarget: null };
 const myPos = { x: 0, z: 0, rot: 0, tp: -1, moving: false };
 
 function clearWorld() {
@@ -587,11 +588,11 @@ function howtoHtml(role) {
   const touch = document.body.classList.contains('touch');
   const ctrl = touch
     ? `<li>🕹️ <b>Rond en bas à gauche</b> : pose ton pouce et glisse pour te déplacer.</li>
-       <li>👆 <b>Glisse un doigt</b> ailleurs sur l'écran : tourner la caméra.</li>
+       <li>🔄 <b>Flèches en haut de l'écran</b> ◀ ▲ ▼ ▶ : garde le doigt appuyé pour tourner la caméra · ⟲ la remet derrière toi.</li>
        <li>🟡 <b>Gros bouton jaune</b> en bas à droite : il affiche l'action possible (<b>Se cacher</b>, <b>Sortir</b>, <b>Fouiller</b>, <b>Attraper</b>).</li>
        <li>❓ Le petit bouton <b>?</b> réaffiche cette aide à tout moment.</li>`
     : `<li>⌨️ <b>Z Q S D</b> (ou les flèches) : se déplacer.</li>
-       <li>🖱️ <b>Clic maintenu + souris</b> : tourner la caméra · <b>molette</b> : zoom.</li>
+       <li>🔄 <b>Flèches en haut de l'écran</b> ◀ ▲ ▼ ▶ (ou clic maintenu + souris) : tourner la caméra · ⟲ la remet derrière toi · <b>molette</b> : zoom.</li>
        <li>🟡 <b>E</b> (ou Espace) : se cacher, sortir de sa cachette, fouiller.</li>
        <li>❓ Le bouton <b>?</b> réaffiche cette aide à tout moment.</li>`;
   const hider = `<h3>🙈 Si tu te caches</h3><ol>
@@ -637,7 +638,11 @@ addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
 let drag = null;
-canvas.addEventListener('pointerdown', (e) => { drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'touch') return; // sur téléphone, la caméra se tourne avec les flèches
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  canvas.setPointerCapture(e.pointerId);
+});
 canvas.addEventListener('pointermove', (e) => {
   if (!drag || drag.id !== e.pointerId) return;
   cam.yaw -= (e.clientX - drag.x) * 0.006;
@@ -645,6 +650,18 @@ canvas.addEventListener('pointermove', (e) => {
   drag.x = e.clientX; drag.y = e.clientY;
 });
 canvas.addEventListener('pointerup', () => (drag = null));
+// flèches de caméra : garder appuyé pour tourner en continu
+const camHold = new Map(); // pointerId -> [yaw, pitch]
+for (const b of document.querySelectorAll('#cam-pad [data-cam]')) {
+  const [dy, dp] = b.dataset.cam.split(',').map(Number);
+  const stop = (e) => { camHold.delete(e.pointerId); b.classList.remove('on'); };
+  b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); camHold.set(e.pointerId, [dy, dp]); b.classList.add('on'); });
+  b.addEventListener('pointerup', stop);
+  b.addEventListener('pointercancel', stop);
+  b.addEventListener('lostpointercapture', stop);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+$('cam-reset').addEventListener('click', () => { cam.yaw = myPos.rot + Math.PI; cam.pitch = 0.5; });
 canvas.addEventListener('wheel', (e) => { cam.dist = Math.max(3, Math.min(14, cam.dist + Math.sign(e.deltaY) * 0.6)); }, { passive: true });
 
 // joystick tactile
@@ -681,7 +698,9 @@ function angleLerp(a, b, k) { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.
 
 function frame() {
   requestAnimationFrame(frame);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
+  const camDt = Math.min(rawDt, 0.25); // la caméra garde sa vitesse même si le téléphone est lent
   const t = clock.elapsedTime;
   if (!world || !state || !me) return;
 
@@ -754,21 +773,32 @@ function frame() {
     if (k >= 1) { if (f.type !== 'shake') scene.remove(f.obj); fx.splice(i, 1); }
   }
 
-  // caméra
+  // caméra : flèches maintenues, puis lissage pour un mouvement fluide
+  for (const [dy, dp] of camHold.values()) {
+    cam.yaw += dy * 2.2 * camDt;
+    cam.pitch = Math.max(0.08, Math.min(1.35, cam.pitch + dp * 1.1 * camDt));
+  }
   let target = new THREE.Vector3(myPos.x, 0, myPos.z);
   if (me.found && state.phase === 'search') {
     const se = ents.get(state.seekerId);
     if (se) target.copy(se.root.position);
   }
   target.y = 1.4;
-  const dir = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+  const ks = 1 - Math.exp(-camDt * 10);
+  if (!cam.sTarget || cam.sTarget.distanceTo(target) > 8) cam.sTarget = target.clone(); // téléportation : on suit tout de suite
+  else cam.sTarget.lerp(target, 1 - Math.exp(-camDt * 14));
+  cam.sYaw = angleLerp(cam.sYaw, cam.yaw, ks);
+  cam.sPitch += (cam.pitch - cam.sPitch) * ks;
+  const dir = new THREE.Vector3(Math.sin(cam.sYaw) * Math.cos(cam.sPitch), Math.sin(cam.sPitch), Math.cos(cam.sYaw) * Math.cos(cam.sPitch));
   let dist = cam.dist;
-  ray.set(target, dir);
+  ray.set(cam.sTarget, dir);
   ray.far = dist;
   const hit = ray.intersectObjects(world.blockers, true)[0];
   if (hit) dist = Math.max(1.2, hit.distance - 0.3);
-  camera.position.copy(target).addScaledVector(dir, dist);
-  camera.lookAt(target);
+  // un mur se rapproche : on avance tout de suite ; sinon on recule en douceur
+  cam.sDist = dist < cam.sDist ? dist : cam.sDist + (dist - cam.sDist) * (1 - Math.exp(-camDt * 4));
+  camera.position.copy(cam.sTarget).addScaledVector(dir, cam.sDist);
+  camera.lookAt(cam.sTarget);
 
   hudTimer -= dt;
   if (hudTimer <= 0) { hudTimer = 0.1; updatePrompt(); if (state.phase === 'hide' || state.phase === 'search') { $('timer').textContent = fmt(state.timeLeft); } }

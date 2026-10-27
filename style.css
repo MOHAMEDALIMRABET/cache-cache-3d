@@ -125,6 +125,12 @@ body.touch #help { display: none; }
 #games .game { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f3f1ff; border-radius: 12px; padding: 6px 6px 6px 12px; margin: 6px 0; }
 #games .game button { padding: 8px 14px; }
 #error.info { background: var(--accent2); }
+/* Flèches de caméra (en haut de l'écran) */
+#cam-pad { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+#cam-pad button { width: 48px; height: 44px; padding: 0; border-radius: 12px; font-size: 1.25rem; background: rgba(20,18,45,.72); color: #fff; border: 2px solid rgba(255,255,255,.35); touch-action: none; -webkit-tap-highlight-color: transparent; }
+#cam-pad button.on, #cam-pad button:active { background: var(--accent); color: var(--ink); border-color: var(--accent); transform: scale(.94); }
+#cam-reset { font-size: 1.4rem !important; }
+#toasts { top: 128px; }
 /* Comment jouer */
 .howto-btn { width: 100%; background: var(--accent); color: var(--ink); margin: 6px 0; }
 #howto-wrap { position: fixed; inset: 0; z-index: 9; background: rgba(10, 8, 30, .75); display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -137,7 +143,7 @@ body.touch #help { display: none; }
 .howto-card li { margin: 4px 0; }
 .howto-card .big { width: 100%; margin-top: 16px; }
 .help-btn { position: absolute; right: 12px; bottom: 50px; width: 46px; height: 46px; border-radius: 50%; padding: 0; font-size: 1.3rem; background: rgba(255,255,255,.92); color: var(--ink); pointer-events: auto; }
-body.touch .help-btn { top: 128px; bottom: auto; right: 8px; }
+body.touch .help-btn { top: 176px; bottom: auto; right: 8px; }
 .reveal-role { margin: 16px auto 0; max-width: 460px; background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 16px; font-size: 1.05rem; line-height: 1.45; }
 .reveal-role b { color: var(--accent); }
 #btn-action { font-family: var(--display); font-size: 1.05rem; line-height: 1.1; padding: 6px; }
@@ -149,9 +155,11 @@ body.touch .help-btn { top: 128px; bottom: auto; right: 8px; }
   .lobby-bottom { grid-template-columns: 1fr; }
   #topbar { top: 8px; gap: 8px; padding: 4px 12px; font-size: .8rem; }
   #timer { font-size: 1.4rem; }
-  #hud-players { top: 58px; left: 8px; font-size: .7rem; max-width: 44vw; padding: 6px; }
-  #role { top: 58px; right: 8px; font-size: .75rem; max-width: 46vw; }
-  #toasts { top: 150px; width: 92vw; }
+  #cam-pad { top: 56px; gap: 5px; }
+  #cam-pad button { width: 50px; height: 46px; }
+  #hud-players { top: 112px; left: 8px; font-size: .7rem; max-width: 44vw; padding: 6px; }
+  #role { top: 112px; right: 8px; font-size: .75rem; max-width: 46vw; }
+  #toasts { top: 200px; width: 92vw; }
   #help { display: none; }
   #prompt { bottom: 175px; white-space: normal; text-align: center; width: 90vw; }
   #hide-panel { top: auto; bottom: 170px; left: 12px; right: 12px; width: auto; max-height: 36vh; overflow: auto; }

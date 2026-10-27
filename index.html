@@ -102,6 +102,13 @@
       <div id="remaining"></div>
     </div>
     <div id="role"></div>
+    <div id="cam-pad" aria-label="Tourner la caméra">
+      <button data-cam="1,0" aria-label="Tourner à gauche">◀</button>
+      <button data-cam="0,-1" aria-label="Regarder vers le haut">▲</button>
+      <button id="cam-reset" aria-label="Caméra derrière moi">⟲</button>
+      <button data-cam="0,1" aria-label="Regarder vers le bas">▼</button>
+      <button data-cam="-1,0" aria-label="Tourner à droite">▶</button>
+    </div>
     <ul id="hud-players"></ul>
     <div id="toasts"></div>
     <div id="prompt"></div>
@@ -113,7 +120,7 @@
     </div>
     <div id="blind"><div>🙈 Ferme les yeux et compte !</div><div id="blind-count">30</div><div class="sub">Les autres se cachent…</div></div>
     <button id="btn-help" class="help-btn" aria-label="Comment jouer">❓</button>
-    <div id="help">ZQSD / WASD / flèches : bouger · Clic-glisser : caméra · Molette : zoom · <kbd>E</kbd> / Espace : action</div>
+    <div id="help">ZQSD / WASD / flèches : bouger · Flèches en haut ou clic-glisser : caméra · Molette : zoom · <kbd>E</kbd> / Espace : action</div>
     <div id="touch">
       <div id="stick"><div id="knob"></div></div>
       <button id="btn-action" class="idle">E</button>

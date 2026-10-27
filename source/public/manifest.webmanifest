@@ -1,0 +1,17 @@
+{
+  "name": "Cache-Cache 3D",
+  "short_name": "Cache-Cache",
+  "description": "Jeu de cache-cache en 3D, jusqu'à 8 joueurs en ligne ou en solo contre des bots.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1d1b3a",
+  "theme_color": "#1d1b3a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

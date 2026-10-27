@@ -1,0 +1,21 @@
+{
+  "name": "cache-cache-3d",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "build:web": "node build-web.mjs",
+    "deploy": "node build-web.mjs && npx firebase-tools deploy",
+    "build:artifact": "node build-artifact.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.160.0",
+    "ws": "^8.22.0"
+  },
+  "type": "module"
+}

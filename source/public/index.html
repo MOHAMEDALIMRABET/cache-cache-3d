@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Cache-Cache 3D</title>
+  <meta name="theme-color" content="#1d1b3a">
+  <meta name="description" content="Jeu de cache-cache en 3D, jusqu'à 8 joueurs en ligne ou en solo contre des bots.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Accueil -->
+  <section id="home" class="screen active">
+    <div class="card home-card">
+      <h1>🙈 Cache-Cache <span>3D</span></h1>
+      <p class="sub">Jusqu'à 8 joueurs · en ligne ou en solo contre des bots</p>
+      <label>Ton pseudo <input id="name" maxlength="16" placeholder="Ton pseudo"></label>
+      <div class="row">
+        <button id="btn-solo" class="big">🎮 Jouer en solo</button>
+        <button id="btn-create" class="big alt">🌐 Créer une partie en ligne</button>
+      </div>
+      <div id="games"></div>
+      <div class="row join">
+        <input id="join-code" maxlength="4" placeholder="CODE">
+        <button id="btn-join">Rejoindre</button>
+      </div>
+      <a id="full-link" class="full-link" target="_blank" rel="noopener" hidden>🚀 Ouvrir le jeu complet (lien à partager, installable sur téléphone)</a>
+      <details class="rules">
+        <summary>📜 Règles &amp; points</summary>
+        <ol>
+          <li>Chacun choisit son personnage.</li>
+          <li>Un <b class="red">chercheur</b> est tiré au sort (il est tout en <b class="red">rouge</b>) et un environnement est tiré au hasard.</li>
+          <li>Les autres ont <b>30 s</b> pour choisir une cachette pendant que le chercheur ferme les yeux.</li>
+          <li>Le chercheur a <b>2 min + 30 s par joueur caché</b> (6 min max) pour trouver tout le monde : il fouille les cachettes (<kbd>E</kbd>) et attrape ceux qu'il touche.</li>
+          <li>Fouiller une cachette vide coûte <b>5 s</b>. Dans la dernière minute, une cachette occupée « éternue » de temps en temps !</li>
+        </ol>
+        <table>
+          <tr><th colspan="2">Chercheur</th></tr>
+          <tr><td>Joueur trouvé</td><td>+100</td></tr>
+          <tr><td>Tout le monde trouvé</td><td>+150 + 2 pts / seconde restante</td></tr>
+          <tr><th colspan="2">Cachés</th></tr>
+          <tr><td>Chaque seconde cachée</td><td>+1</td></tr>
+          <tr><td>Jamais trouvé (survivant)</td><td>+150</td></tr>
+          <tr><td>Dernier trouvé</td><td>+50</td></tr>
+        </table>
+        <p>Le chercheur <b>gagne la manche</b> s'il trouve tout le monde, sinon ce sont les survivants. Après toutes les manches (chacun cherche à son tour), le plus gros score est champion 🏆.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Salon -->
+  <section id="lobby" class="screen">
+    <div class="card lobby-card">
+      <div class="lobby-head">
+        <h2>Choisis ton personnage</h2>
+        <div id="room-info"></div>
+      </div>
+      <div id="char-grid"></div>
+      <div class="lobby-bottom">
+        <div>
+          <h3>Joueurs <span id="pcount"></span></h3>
+          <ul id="player-list"></ul>
+        </div>
+        <div id="host-controls">
+          <button id="btn-addbot">🤖 Ajouter un bot</button>
+          <label>Manches <select id="rounds"></select></label>
+          <button id="btn-start" class="big">▶ Lancer la partie</button>
+        </div>
+        <p id="wait-host" class="sub">En attente de l'hôte…</p>
+      </div>
+      <button id="btn-leave" class="link">← Quitter</button>
+    </div>
+  </section>
+
+  <!-- Tirage au sort -->
+  <section id="reveal" class="screen">
+    <div class="reveal-box">
+      <div class="reveal-label">Le chercheur est…</div>
+      <div id="reveal-seeker" class="reveal-name"></div>
+      <img id="reveal-img" alt="">
+      <div class="reveal-label">Environnement</div>
+      <div id="reveal-map" class="reveal-map"></div>
+      <div id="reveal-round" class="sub"></div>
+    </div>
+  </section>
+
+  <!-- Interface en jeu -->
+  <section id="hud" class="screen">
+    <div id="topbar">
+      <div id="phase-label"></div>
+      <div id="timer">0:00</div>
+      <div id="remaining"></div>
+    </div>
+    <div id="role"></div>
+    <ul id="hud-players"></ul>
+    <div id="toasts"></div>
+    <div id="prompt"></div>
+    <div id="hide-panel">
+      <h3>🫣 Choisis ta cachette</h3>
+      <div id="spot-list"></div>
+      <button id="btn-more" class="link">🔀 Autres idées</button>
+      <p class="sub">…ou promène-toi et appuie sur <kbd>E</kbd> près d'une cachette (marquée 👀).</p>
+    </div>
+    <div id="blind"><div>🙈 Ferme les yeux et compte !</div><div id="blind-count">30</div><div class="sub">Les autres se cachent…</div></div>
+    <div id="help">ZQSD / WASD / flèches : bouger · Clic-glisser : caméra · Molette : zoom · <kbd>E</kbd> / Espace : action</div>
+    <div id="touch">
+      <div id="stick"><div id="knob"></div></div>
+      <button id="btn-action">E</button>
+    </div>
+  </section>
+
+  <!-- Fin de manche -->
+  <section id="roundend" class="screen">
+    <div class="card">
+      <h2 id="re-title"></h2>
+      <p id="re-sub" class="sub"></p>
+      <table id="re-table"></table>
+      <p class="sub" id="re-next"></p>
+    </div>
+  </section>
+
+  <!-- Fin de partie -->
+  <section id="final" class="screen">
+    <div class="card">
+      <h2>🏆 Classement final</h2>
+      <div id="podium"></div>
+      <ol id="final-list"></ol>
+      <div class="row">
+        <button id="btn-again" class="big">🔁 Rejouer</button>
+        <button id="btn-home" class="alt">🏠 Accueil</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="error"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

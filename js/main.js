@@ -347,7 +347,7 @@ function onState(s) {
 let suggestions = [];
 function onPhase(prev, phase) {
   lastPhase = phase;
-  if (phase === 'lobby') { clearWorld(); show('lobby'); }
+  if (phase === 'lobby') { clearWorld(); show('lobby'); if (!store.get('cc-howto')) openHowto(); }
   if (phase === 'reveal') startReveal();
   if (phase === 'hide') {
     show('hud');
@@ -369,6 +369,7 @@ function startReveal() {
   show('reveal');
   const seeker = state.players.find((p) => p.id === state.seekerId);
   $('reveal-round').textContent = `Manche ${state.round} / ${state.totalRounds}`;
+  $('reveal-role').innerHTML = '';
   const names = state.players;
   let i = 0, delay = 60;
   const spin = () => {
@@ -384,6 +385,11 @@ function startReveal() {
       $('reveal-seeker').textContent = `${seeker.name}${seeker.id === session.myId ? ' (toi !)' : ''}`;
       $('reveal-img').src = thumbs[seeker.charId];
       $('reveal-map').textContent = mapName(state.mapId);
+      const touch = document.body.classList.contains('touch');
+      const act = touch ? 'le <b>gros bouton jaune</b>' : 'la touche <b>E</b>';
+      $('reveal-role').innerHTML = seeker.id === session.myId
+        ? `🔍 <b>C'est toi qui cherches !</b><br>Ferme les yeux 30 s, puis approche-toi des cachettes et utilise ${act} pour les fouiller.`
+        : `🙈 <b>Cache-toi !</b><br>Tu auras 30 s : choisis une cachette dans la liste, ou approche-toi d'un 👀 et utilise ${act}.`;
       jingle([[392], [523], [659], [784, 450]]);
     }
   };
@@ -556,7 +562,60 @@ function updatePrompt() {
   }
   el.textContent = text;
   el.style.display = text ? 'block' : 'none';
+  // gros bouton (téléphone) : le mot de l'action possible ici
+  const btn = $('btn-action');
+  const word = actionWord();
+  if (btn.textContent !== (word || 'E')) btn.textContent = word || 'E';
+  btn.classList.toggle('idle', !word);
 }
+
+function actionWord() {
+  if (!me || !world || !(state.phase === 'hide' || state.phase === 'search') || me.found) return '';
+  if (me.isSeeker) {
+    if (state.phase !== 'search') return '';
+    if (state.players.some((p) => !p.isSeeker && !p.found && p.hidden == null && p.x != null && Math.hypot(p.x - myPos.x, p.z - myPos.z) < CONFIG.CATCH_DIST + 0.8)) return 'Attraper';
+    const n = nearestSpot(myPos.x, myPos.z);
+    return n && n.d <= CONFIG.SEARCH_DIST ? 'Fouiller' : '';
+  }
+  if (me.hidden != null) return 'Sortir';
+  const n = nearestSpot(myPos.x, myPos.z);
+  return n && n.d <= CONFIG.SEARCH_DIST && !occupant(n.o.spotId) ? 'Se cacher' : '';
+}
+
+// ---------------- Comment jouer ----------------
+function howtoHtml(role) {
+  const touch = document.body.classList.contains('touch');
+  const ctrl = touch
+    ? `<li>🕹️ <b>Rond en bas à gauche</b> : pose ton pouce et glisse pour te déplacer.</li>
+       <li>👆 <b>Glisse un doigt</b> ailleurs sur l'écran : tourner la caméra.</li>
+       <li>🟡 <b>Gros bouton jaune</b> en bas à droite : il affiche l'action possible (<b>Se cacher</b>, <b>Sortir</b>, <b>Fouiller</b>, <b>Attraper</b>).</li>
+       <li>❓ Le petit bouton <b>?</b> réaffiche cette aide à tout moment.</li>`
+    : `<li>⌨️ <b>Z Q S D</b> (ou les flèches) : se déplacer.</li>
+       <li>🖱️ <b>Clic maintenu + souris</b> : tourner la caméra · <b>molette</b> : zoom.</li>
+       <li>🟡 <b>E</b> (ou Espace) : se cacher, sortir de sa cachette, fouiller.</li>
+       <li>❓ Le bouton <b>?</b> réaffiche cette aide à tout moment.</li>`;
+  const hider = `<h3>🙈 Si tu te caches</h3><ol>
+       <li>Tu as <b>30 secondes</b> : touche une cachette dans la liste « Choisis ta cachette », ou marche jusqu'à un 👀 et fais <b>Se cacher</b>.</li>
+       <li>Le chercheur est <b>tout rouge</b> 🔴. S'il fouille ta cachette ou te <b>touche</b>, tu es trouvé.</li>
+       <li>Il s'approche ? Tu peux <b>Sortir</b> et courir vers une autre cachette… mais à découvert, on te voit !</li>
+       <li>Tiens jusqu'à la fin du chrono : <b>+150 points</b> (et +1 point par seconde caché).</li></ol>`;
+  const seeker = `<h3>🔍 Si tu es le chercheur</h3><ol>
+       <li>Pendant 30 secondes ton écran est noir : <b>les autres se cachent</b>.</li>
+       <li>Ensuite, va près des cachettes et fais <b>Fouiller</b>. Un joueur à découvert : <b>touche-le</b> pour l'attraper.</li>
+       <li>Cachette vide = <b>−5 secondes</b>. Dans la dernière minute, une cachette occupée <b>éternue</b> 🤧 : fonce !</li>
+       <li>Trouve tout le monde avant la fin : <b>+100 par joueur</b>, +150 de bonus et des points pour le temps restant.</li></ol>`;
+  const goal = `<h3>🎯 Le but</h3><p>Un joueur tiré au sort <b>cherche</b>, les autres <b>se cachent</b>. Le chrono dépend du nombre de joueurs (2 min + 30 s par caché, 6 min max). Chacun cherche à son tour ; à la fin, le plus gros score gagne 🏆.</p>`;
+  const body = role === 'seeker' ? seeker : role === 'hider' ? hider : goal + hider + seeker;
+  return body + `<h3>🎮 Commandes</h3><ul>${ctrl}</ul>`;
+}
+function openHowto(role) {
+  $('howto').innerHTML = howtoHtml(role);
+  $('howto-wrap').hidden = false;
+}
+$('btn-howto-close').onclick = () => { $('howto-wrap').hidden = true; store.set('cc-howto', '1'); };
+$('btn-howto-home').onclick = () => openHowto();
+$('btn-howto-lobby').onclick = () => openHowto();
+$('btn-help').onclick = () => openHowto(me?.isSeeker ? 'seeker' : 'hider');
 
 function action() {
   if (!me || !session) return;

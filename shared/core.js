@@ -3,7 +3,7 @@
 
 export const CONFIG = {
   MAX_PLAYERS: 8,
-  REVEAL_TIME: 6,          // tirage au sort du chercheur + environnement
+  REVEAL_TIME: 8,          // tirage au sort du chercheur + environnement
   HIDE_TIME: 30,           // temps pour se cacher (le chercheur a les yeux fermés)
   SEARCH_BASE: 120,        // temps de recherche = 2 min + 30 s par joueur caché (max 6 min)
   SEARCH_PER_HIDER: 30,

@@ -27,6 +27,7 @@
         <button id="btn-solo" class="big">🎮 Jouer en solo</button>
         <button id="btn-create" class="big alt">🌐 Créer une partie en ligne</button>
       </div>
+      <button id="btn-howto-home" class="howto-btn">❓ Comment jouer</button>
       <div id="games"></div>
       <div class="row join">
         <input id="join-code" maxlength="4" placeholder="CODE">
@@ -34,7 +35,7 @@
       </div>
       <a id="full-link" class="full-link" target="_blank" rel="noopener" hidden>🚀 Ouvrir le jeu complet (lien à partager, installable sur téléphone)</a>
       <details class="rules">
-        <summary>📜 Règles &amp; points</summary>
+        <summary>📜 Règles détaillées &amp; points</summary>
         <ol>
           <li>Chacun choisit son personnage.</li>
           <li>Un <b class="red">chercheur</b> est tiré au sort (il est tout en <b class="red">rouge</b>) et un environnement est tiré au hasard.</li>
@@ -76,7 +77,7 @@
         </div>
         <p id="wait-host" class="sub">En attente de l'hôte…</p>
       </div>
-      <button id="btn-leave" class="link">← Quitter</button>
+      <div class="row"><button id="btn-leave" class="link">← Quitter</button><button id="btn-howto-lobby" class="link">❓ Comment jouer</button></div>
     </div>
   </section>
 
@@ -88,6 +89,7 @@
       <img id="reveal-img" alt="">
       <div class="reveal-label">Environnement</div>
       <div id="reveal-map" class="reveal-map"></div>
+      <div id="reveal-role" class="reveal-role"></div>
       <div id="reveal-round" class="sub"></div>
     </div>
   </section>
@@ -110,10 +112,11 @@
       <p class="sub">…ou promène-toi et appuie sur <kbd>E</kbd> près d'une cachette (marquée 👀).</p>
     </div>
     <div id="blind"><div>🙈 Ferme les yeux et compte !</div><div id="blind-count">30</div><div class="sub">Les autres se cachent…</div></div>
+    <button id="btn-help" class="help-btn" aria-label="Comment jouer">❓</button>
     <div id="help">ZQSD / WASD / flèches : bouger · Clic-glisser : caméra · Molette : zoom · <kbd>E</kbd> / Espace : action</div>
     <div id="touch">
       <div id="stick"><div id="knob"></div></div>
-      <button id="btn-action">E</button>
+      <button id="btn-action" class="idle">E</button>
     </div>
   </section>
 
@@ -137,6 +140,14 @@
         <button id="btn-again" class="big">🔁 Rejouer</button>
         <button id="btn-home" class="alt">🏠 Accueil</button>
       </div>
+    </div>
+  </section>
+
+  <!-- Comment jouer -->
+  <section id="howto-wrap" hidden>
+    <div class="card howto-card">
+      <div id="howto"></div>
+      <button id="btn-howto-close" class="big">👍 J'ai compris !</button>
     </div>
   </section>
 

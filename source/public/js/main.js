@@ -120,7 +120,14 @@ function show(id) {
 // ---------------- Accueil ----------------
 $('name').value = store.get('cc-name') || '';
 const params = new URLSearchParams(location.search);
-if (params.get('room')) $('join-code').value = params.get('room').toUpperCase();
+if (params.get('room')) {
+  const code = params.get('room').toUpperCase().slice(0, 4);
+  $('join-code').value = code;
+  $('ib-code').textContent = code;
+  $('invite-banner').hidden = false;
+  $('btn-join-invite').hidden = false;
+  $('btn-join-invite').onclick = () => joinGame(code);
+}
 const myName = () => { const n = $('name').value.trim() || 'Joueur'; store.set('cc-name', n); return n; };
 const savedChar = () => store.get('cc-char');
 $('btn-solo').onclick = () => { startSession(new LocalSession(myName(), savedChar())); beep(700); };
@@ -195,23 +202,46 @@ for (const c of CHARACTERS) {
   $('char-grid').appendChild(d);
 }
 
+// Boîte d'invitation du salon : WhatsApp, SMS, partage du téléphone, lien à copier
+function setupInvite(code) {
+  const box = $('invite-box');
+  box.hidden = !code;
+  if (!code) return;
+  $('inv-code').textContent = code;
+  const url = location.origin + location.pathname + '?room=' + code;
+  const text = `Viens jouer à Cache-Cache 3D avec moi ! 🙈 Ouvre ce lien et touche « Rejoindre la partie » (code ${code}) : ${url}`;
+  const linkMode = !IN_CLAUDE; // sur claude.ai, on partage seulement le code
+  $('inv-wa').hidden = $('inv-sms').hidden = $('inv-link').hidden = !linkMode;
+  $('inv-share').hidden = !(linkMode && navigator.share);
+  $('inv-wa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  $('inv-sms').href = 'sms:?&body=' + encodeURIComponent(text);
+  $('inv-link').value = url;
+  $('inv-share').onclick = () => navigator.share({ title: 'Cache-Cache 3D', text, url }).catch(() => {});
+  const copy = $('inv-copy');
+  copy.textContent = linkMode ? '📋 Copier le lien' : '📋 Copier le code';
+  copy.onclick = () => {
+    const value = linkMode ? text : code;
+    Promise.resolve(navigator.clipboard?.writeText(value)).then(
+      () => { copy.textContent = '✅ Copié ! Colle-le dans un message'; },
+      () => { $('inv-link').hidden = false; $('inv-link').select(); copy.textContent = '👇 Copie le lien ci-dessous'; });
+  };
+}
+$('inv-link').onclick = () => $('inv-link').select();
+
 function renderLobby() {
   const isHost = state.hostId === session.myId;
   const solo = session instanceof LocalSession;
   const infoKey = solo ? 'solo' : state.code;
   if ($('room-info').dataset.key !== infoKey) {
     $('room-info').dataset.key = infoKey;
-    $('room-info').innerHTML = solo ? '🎮 Mode solo' : `Code de la partie : <span class="code">${esc(state.code)}</span> <button class="link" id="btn-copy">${IN_CLAUDE ? '📋 Copier le code' : '📨 Inviter des amis'}</button>`;
-    const copy = $('btn-copy');
-    if (copy) copy.onclick = () => {
-      const url = location.origin + location.pathname + '?room=' + state.code;
-      if (!IN_CLAUDE && navigator.share) {
-        navigator.share({ title: 'Cache-Cache 3D', text: `Viens jouer à Cache-Cache 3D avec moi ! Code de la partie : ${state.code}`, url }).catch(() => {});
-        return;
-      }
-      const text = IN_CLAUDE ? state.code : url;
-      Promise.resolve(navigator.clipboard?.writeText(text)).then(() => { copy.textContent = '✅ Copié !'; }, () => { copy.textContent = text; });
-    };
+    $('room-info').innerHTML = solo ? '🎮 Mode solo' : `🌐 Partie en ligne · code <span class="code">${esc(state.code)}</span>`;
+    setupInvite(solo ? null : state.code);
+  }
+  if (!solo) {
+    const humans = state.players.filter((p) => !p.isBot).length;
+    setText($('inv-wait'), humans < 2
+      ? '⏳ En attente de ton ami… Envoie-lui le lien : dès qu\'il apparaît dans « Joueurs », lance la partie.'
+      : `✅ ${humans} joueurs connectés. ${isHost ? 'Tu peux lancer la partie !' : 'L\'hôte va lancer la partie.'}`);
   }
   for (const card of $('char-grid').children) {
     const owner = state.players.find((p) => p.charId === card.dataset.id);
@@ -229,7 +259,7 @@ function renderLobby() {
   $('rounds').value = String(state.totalRounds);
   $('btn-addbot').disabled = state.players.length >= 8;
   $('btn-start').disabled = state.players.length < 2;
-  $('btn-start').textContent = state.players.length < 2 ? 'Ajoute au moins 1 joueur' : '▶ Lancer la partie';
+  $('btn-start').textContent = state.players.length >= 2 ? '▶ Lancer la partie' : solo ? 'Ajoute au moins 1 bot' : '⏳ En attente d\'un ami…';
 }
 
 // ---------------- 3D ----------------
@@ -368,6 +398,7 @@ function onState(s) {
 }
 
 let suggestions = [];
+let spotsClosed = false; // le joueur a fermé la liste des cachettes avec la croix
 function onPhase(prev, phase) {
   lastPhase = phase;
   if (phase === 'lobby') { clearWorld(); show('lobby'); if (!store.get('cc-howto')) openHowto(); }
@@ -375,6 +406,7 @@ function onPhase(prev, phase) {
   if (phase === 'hide') {
     show('hud');
     suggestions = [];
+    spotsClosed = false;
     if (me.isSeeker) { toast('🙈 Ferme les yeux pendant que les autres se cachent !'); cam.yaw = 0; }
     else { toast('🫣 Vite ! Choisis une cachette !', 'good'); }
     jingle([[523], [659], [784]]);
@@ -521,6 +553,8 @@ function refreshSuggestions(force) {
     suggestions = (force ? [] : suggestions).concat(pool.map((s) => s.id)).filter((v, i, a) => a.indexOf(v) === i).slice(0, 6);
   }
 }
+$('btn-close-spots').onclick = () => { spotsClosed = true; renderHud(); };
+$('btn-spots').onclick = () => { spotsClosed = false; renderHud(); };
 $('btn-more').onclick = () => { refreshSuggestions(true); renderHud(); };
 
 let lastSpotHtml = '';
@@ -550,7 +584,8 @@ function renderHud() {
   setText($('blind-count'), String(Math.ceil(s.timeLeft)));
   // panneau des cachettes
   const panel = s.phase === 'hide' && !me.isSeeker;
-  $('hide-panel').style.display = panel ? 'block' : 'none';
+  $('hide-panel').style.display = panel && !spotsClosed ? 'block' : 'none';
+  $('btn-spots').style.display = panel && spotsClosed ? 'block' : 'none';
   if (panel) {
     refreshSuggestions(false);
     const html = suggestions.map((id) => `<button data-spot="${id}" class="${me.hidden === id ? 'current' : ''}">${me.hidden === id ? '✅ ' : ''}${esc(world.map.spots[id].name)}</button>`).join('');

@@ -12,6 +12,7 @@
   --green: #2a9d8f;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); font-family: var(--body); font-size: 15px; color: var(--ink); }
 #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 2; }
@@ -93,7 +94,10 @@ kbd { background: #eee; border: 1px solid #bbb; border-radius: 4px; padding: 0 5
 @keyframes pop { from { transform: scale(.6); opacity: 0; } }
 #prompt { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: rgba(255, 183, 3, .95); padding: 10px 18px; border-radius: 14px; font-weight: bold; display: none; white-space: nowrap; }
 #hide-panel { position: absolute; right: 12px; top: 70px; background: rgba(255,255,255,.95); border-radius: 16px; padding: 12px; width: 270px; display: none; }
-#hide-panel h3 { margin: 0 0 8px; }
+#hide-panel h3 { margin: 0; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.close-x { width: 34px; height: 34px; padding: 0; border-radius: 50%; background: #ece9f8; color: var(--ink); font-size: 1rem; flex: none; }
+.spots-btn { position: absolute; right: 12px; top: 70px; display: none; background: var(--green); padding: 10px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
 #spot-list { display: flex; flex-direction: column; gap: 6px; }
 #spot-list button { background: var(--green); text-align: left; padding: 8px 12px; font-size: .9rem; }
 #spot-list button.current { background: var(--accent); color: var(--ink); }
@@ -125,6 +129,20 @@ body.touch #help { display: none; }
 #games .game { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f3f1ff; border-radius: 12px; padding: 6px 6px 6px 12px; margin: 6px 0; }
 #games .game button { padding: 8px 14px; }
 #error.info { background: var(--accent2); }
+/* Invitations */
+#invite-box { background: #fff6d8; border: 2px solid var(--accent); border-radius: 16px; padding: 12px; margin: 10px 0 4px; }
+.inv-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 8px; }
+.inv-title b { color: var(--red); letter-spacing: 3px; font-size: 1.2rem; }
+.inv-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.inv-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 800; font-family: var(--display); border-radius: 12px; padding: 12px; background: var(--accent2); color: #fff; border: 0; font-size: .95rem; cursor: pointer; }
+.inv-btn.wa { background: #25d366; }
+.inv-btn.sms { background: var(--green); }
+#inv-link { margin-top: 8px; font-size: .85rem; color: var(--muted); }
+.inv-wait { margin: 8px 0 0; font-weight: 700; color: #8a5a00; }
+#invite-banner { background: #fff6d8; border: 2px solid var(--accent); border-radius: 14px; padding: 10px 12px; margin: 10px 0; font-weight: 800; }
+#invite-banner b { color: var(--red); letter-spacing: 2px; }
+#invite-banner small { font-weight: 600; color: var(--muted); }
+#btn-join-invite { width: 100%; background: var(--red); margin-bottom: 4px; }
 /* Flèches de caméra (en haut de l'écran) */
 #cam-pad { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
 #cam-pad button { width: 48px; height: 44px; padding: 0; border-radius: 12px; font-size: 1.25rem; background: rgba(20,18,45,.72); color: #fff; border: 2px solid rgba(255,255,255,.35); touch-action: none; -webkit-tap-highlight-color: transparent; }
@@ -162,6 +180,14 @@ body.touch .help-btn { top: 176px; bottom: auto; right: 8px; }
   #toasts { top: 200px; width: 92vw; }
   #help { display: none; }
   #prompt { bottom: 175px; white-space: normal; text-align: center; width: 90vw; }
-  #hide-panel { top: auto; bottom: 170px; left: 12px; right: 12px; width: auto; max-height: 36vh; overflow: auto; }
+  /* téléphone : une seule ligne de cachettes qui défile de côté, au-dessus du joystick */
+  #hide-panel { top: auto; bottom: 168px; left: 8px; right: 8px; width: auto; padding: 8px 10px; }
+  #hide-panel h3 { font-size: .95rem; }
+  .panel-head { margin-bottom: 6px; }
+  #spot-list { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; scrollbar-width: none; }
+  #spot-list button { white-space: nowrap; flex: none; font-size: .82rem; padding: 8px 10px; }
+  #hide-panel .sub { display: none; }
+  #btn-more { font-size: .85rem; padding: 4px 0 0; }
+  .spots-btn { top: auto; bottom: 175px; right: auto; left: 8px; }
   .reveal-name { font-size: 2rem; }
 }

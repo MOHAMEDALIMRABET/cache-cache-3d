@@ -22,7 +22,12 @@
     <div class="card home-card">
       <h1>🙈 Cache-Cache <span>3D</span></h1>
       <p class="sub">Jusqu'à 8 joueurs · en ligne ou en solo contre des bots</p>
+      <div id="invite-banner" hidden>
+        <div>🎉 Tu es invité à la partie <b id="ib-code"></b> !</div>
+        <small>Écris ton pseudo, puis touche le bouton.</small>
+      </div>
       <label>Ton pseudo <input id="name" maxlength="16" placeholder="Ton pseudo"></label>
+      <button id="btn-join-invite" class="big" hidden>▶ Rejoindre la partie</button>
       <div class="row">
         <button id="btn-solo" class="big">🎮 Jouer en solo</button>
         <button id="btn-create" class="big alt">🌐 Créer une partie en ligne</button>
@@ -63,6 +68,17 @@
       <div class="lobby-head">
         <h2>Choisis ton personnage</h2>
         <div id="room-info"></div>
+      </div>
+      <div id="invite-box" hidden>
+        <div class="inv-title">📨 Invite tes amis — code <b id="inv-code"></b></div>
+        <div class="inv-actions">
+          <a id="inv-wa" class="inv-btn wa" target="_blank" rel="noopener">💬 WhatsApp</a>
+          <a id="inv-sms" class="inv-btn sms">✉️ SMS</a>
+          <button id="inv-share" class="inv-btn">📤 Partager…</button>
+          <button id="inv-copy" class="inv-btn">📋 Copier le lien</button>
+        </div>
+        <input id="inv-link" readonly aria-label="Lien d'invitation">
+        <p id="inv-wait" class="inv-wait"></p>
       </div>
       <div id="char-grid"></div>
       <div class="lobby-bottom">
@@ -113,11 +129,12 @@
     <div id="toasts"></div>
     <div id="prompt"></div>
     <div id="hide-panel">
-      <h3>🫣 Choisis ta cachette</h3>
+      <div class="panel-head"><h3>🫣 Choisis ta cachette</h3><button id="btn-close-spots" class="close-x" aria-label="Fermer la liste des cachettes">✕</button></div>
       <div id="spot-list"></div>
       <button id="btn-more" class="link">🔀 Autres idées</button>
       <p class="sub">…ou promène-toi et appuie sur <kbd>E</kbd> près d'une cachette (marquée 👀).</p>
     </div>
+    <button id="btn-spots" class="spots-btn">🫣 Cachettes</button>
     <div id="blind"><div>🙈 Ferme les yeux et compte !</div><div id="blind-count">30</div><div class="sub">Les autres se cachent…</div></div>
     <button id="btn-help" class="help-btn" aria-label="Comment jouer">❓</button>
     <div id="help">ZQSD / WASD / flèches : bouger · Flèches en haut ou clic-glisser : caméra · Molette : zoom · <kbd>E</kbd> / Espace : action</div>

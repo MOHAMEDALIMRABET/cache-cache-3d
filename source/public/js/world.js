@@ -1,5 +1,6 @@
 // Construction 3D des environnements (désert, ville, parc, grande maison) à partir des données de la carte.
 import * as THREE from 'three';
+import { bake } from './bake.js';
 
 const mats = new Map();
 const mat = (color, extra) => {
@@ -133,7 +134,8 @@ export function buildWorld(scene, map) {
   const sun = new THREE.DirectionalLight(theme.sun, 2.2);
   sun.position.set(25, 40, 15);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  sun.shadow.mapSize.set(touch ? 1024 : 2048, touch ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 120 });
   root.add(sun);
 
@@ -173,9 +175,18 @@ export function buildWorld(scene, map) {
     if (build) build(g, o);
     else g.add(o.shape === 'circle' ? C(o.r, o.r, o.h, 0x999999) : B(o.w, o.h, o.d, 0x999999));
     root.add(g);
-    if (o.spotId != null) spotObjects.set(o.spotId, g);
-    if (o.h > 2.2 && o.kind !== 'tree' && o.kind !== 'palm' && o.kind !== 'lamp') blockers.push(g);
+    if (o.spotId != null) { spotObjects.set(o.spotId, g); g.userData.bakeRoot = true; bake(g, true); }
+    // volume simple (invisible) pour empêcher la caméra de traverser les murs et les bâtiments
+    if (o.h > 2.2 && o.solid && o.kind !== 'tree' && o.kind !== 'palm' && o.kind !== 'lamp') {
+      const geo = o.shape === 'circle' ? new THREE.CylinderGeometry(o.r, o.r, o.h, 10) : new THREE.BoxGeometry(o.w, o.h, o.d);
+      const proxy = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+      proxy.position.set(o.x, o.h / 2, o.z);
+      proxy.updateMatrixWorld(true);
+      blockers.push(proxy);
+    }
   }
+  // tout le décor fixe fusionné en quelques maillages
+  bake(root, true);
   scene.add(root);
-  return { root, spotObjects, blockers };
+  return { root, spotObjects, blockers, sun };
 }

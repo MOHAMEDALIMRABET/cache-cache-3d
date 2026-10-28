@@ -1,5 +1,6 @@
 // Modèles 3D des personnages, construits à partir de formes simples (aucun fichier externe).
 import * as THREE from 'three';
+import { bake } from './bake.js';
 
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.65, metalness: 0.05, ...extra });
 const mesh = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
@@ -291,6 +292,10 @@ const BUILDERS = {
 
 export function buildCharacter(charId) {
   const g = (BUILDERS[charId] || BUILDERS.mario)();
+  // une quarantaine de petits morceaux -> 6 maillages (corps, tête, 2 bras, 2 jambes) : bien plus fluide
+  const parts = g.userData.parts;
+  for (const k of ['legL', 'legR', 'armL', 'armR', 'head']) { parts[k].userData.bakeRoot = true; bake(parts[k]); }
+  bake(g);
   const outer = new THREE.Group();
   outer.add(g);
   outer.userData.parts = g.userData.parts;
@@ -302,6 +307,12 @@ export function buildCharacter(charId) {
 export function makeSeeker(model, on) {
   model.traverse((o) => {
     if (!o.isMesh || !o.material || !o.material.color) return;
+    if (o.material.vertexColors) {
+      // maillage fusionné : on teinte toute la matière en rouge
+      o.material.color.setRGB(on ? 1 : 1, on ? 0.38 : 1, on ? 0.38 : 1);
+      o.material.emissive = new THREE.Color(on ? 0x5a0000 : 0x000000);
+      return;
+    }
     if (!o.userData.baseColor) o.userData.baseColor = o.material.color.clone();
     if (on) {
       o.material.color.copy(o.userData.baseColor).lerp(new THREE.Color(0xff1a1a), 0.55);

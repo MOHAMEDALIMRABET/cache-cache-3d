@@ -17,7 +17,7 @@ ${css}
 ${body.trim()}
 `;
 fs.writeFileSync(`${out}/index.html`, page);
-for (const f of ['main.js', 'characters.js', 'world.js', 'net-room.js', 'net-firebase.js']) fs.copyFileSync(`public/js/${f}`, `${out}/js/${f}`);
+for (const f of ['main.js', 'characters.js', 'world.js', 'net-room.js', 'net-firebase.js', 'bake.js']) fs.copyFileSync(`public/js/${f}`, `${out}/js/${f}`);
 fs.copyFileSync('public/shared/core.js', `${out}/shared/core.js`);
 fs.copyFileSync('public/firebase-config.js', `${out}/firebase-config.js`);
 console.log('OK ->', out);

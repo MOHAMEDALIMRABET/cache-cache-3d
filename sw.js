@@ -1,9 +1,9 @@
 // Service worker : rend le jeu installable et jouable en solo sans connexion.
 // Réseau d'abord (toujours la dernière version), copie en cache si hors ligne.
-const CACHE = 'cache-cache-3d-v3';
+const CACHE = 'cache-cache-3d-v4';
 const SHELL = [
   './', 'index.html', 'style.css', 'manifest.webmanifest', 'firebase-config.js', 'vendor/three.module.js',
-  'js/main.js', 'js/characters.js', 'js/world.js', 'js/net-room.js', 'js/net-firebase.js', 'shared/core.js',
+  'js/main.js', 'js/bake.js', 'js/characters.js', 'js/world.js', 'js/net-room.js', 'js/net-firebase.js', 'shared/core.js',
   'icons/icon-192.png', 'icons/icon-512.png',
 ];
 self.addEventListener('install', (e) => {

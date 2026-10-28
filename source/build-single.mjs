@@ -3,10 +3,10 @@
 // sur GitHub, « Add file > Create new file », nom « index.html », coller, « Commit ».
 import fs from 'node:fs';
 const modules = [
-  ['core', 'public/shared/core.js'], ['config', 'public/firebase-config.js'], ['characters', 'public/js/characters.js'],
+  ['core', 'public/shared/core.js'], ['config', 'public/firebase-config.js'], ['bake', 'public/js/bake.js'], ['characters', 'public/js/characters.js'],
   ['world', 'public/js/world.js'], ['room', 'public/js/net-room.js'], ['firebase', 'public/js/net-firebase.js'], ['main', 'public/js/main.js'],
 ];
-const varOf = (spec) => ({ '../shared/core.js': 'core', '../firebase-config.js': 'config', './characters.js': 'characters', './world.js': 'world', './net-room.js': 'room', './net-firebase.js': 'firebase' }[spec]);
+const varOf = (spec) => ({ '../shared/core.js': 'core', '../firebase-config.js': 'config', './characters.js': 'characters', './world.js': 'world', './bake.js': 'bake', './net-room.js': 'room', './net-firebase.js': 'firebase' }[spec]);
 let js = "import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';\n";
 for (const [name, file] of modules) {
   let src = fs.readFileSync(file, 'utf8');

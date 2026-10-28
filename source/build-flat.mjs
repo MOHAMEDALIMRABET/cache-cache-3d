@@ -14,7 +14,7 @@ const files = {
   'index.html': 'public/index.html', 'style.css': 'public/style.css', 'manifest.webmanifest': 'public/manifest.webmanifest',
   'firebase-config.js': 'public/firebase-config.js', 'main.js': 'public/js/main.js', 'characters.js': 'public/js/characters.js',
   'world.js': 'public/js/world.js', 'net-room.js': 'public/js/net-room.js', 'net-firebase.js': 'public/js/net-firebase.js',
-  'core.js': 'public/shared/core.js',
+  'core.js': 'public/shared/core.js', 'bake.js': 'public/js/bake.js',
 };
 for (const [dst, src] of Object.entries(files)) fs.writeFileSync(`${out}/${dst}`, fix(fs.readFileSync(src, 'utf8')));
 let sw = fs.readFileSync('public/sw.js', 'utf8').replace(/const SHELL = \[[\s\S]*?\];/, `const SHELL = ['./', ${[...Object.keys(files), 'three.module.js', 'icon-192.png', 'icon-512.png'].map((f) => `'${f}'`).join(', ')}];`);

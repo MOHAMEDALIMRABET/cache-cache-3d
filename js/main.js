@@ -15,6 +15,9 @@ const charName = (id) => CHARACTERS.find((c) => c.id === id)?.name || '?';
 const mapName = (id) => MAPS.find((m) => m.id === id)?.name || '?';
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (t) => { t = Math.max(0, Math.ceil(t)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+// écrit dans la page seulement si le contenu change (évite de tout redessiner 20 fois par seconde)
+const setHTML = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
+const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
 const thumbs = makeThumbnails(CHARACTERS.map((c) => c.id));
@@ -42,7 +45,13 @@ class LocalSession {
     this.room.addPlayer('me', name);
     if (charId) this.room.handle('me', { t: 'char', charId });
     for (let i = 0; i < 3; i++) this.room.addBot();
-    this.timer = setInterval(() => { this.room.update(0.05); this.push(); }, 50);
+    let last = performance.now();
+    this.timer = setInterval(() => {
+      const now = performance.now();
+      this.room.update(Math.min(0.5, (now - last) / 1000)); // temps réel, même si le téléphone ralentit
+      last = now;
+      this.push();
+    }, 50);
     setTimeout(() => this.push());
   }
   push() { this.onState?.(this.room.snapshot('me')); }
@@ -225,10 +234,13 @@ function renderLobby() {
 
 // ---------------- 3D ----------------
 const canvas = $('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_TOUCH, powerPreference: 'high-performance' });
+// qualité automatique : on baisse la résolution (puis les ombres) si le téléphone n'arrive pas à suivre
+const quality = { ratio: Math.min(devicePixelRatio, IS_TOUCH ? 1.5 : 2), frames: 0, time: 0, shadows: true };
+renderer.setPixelRatio(quality.ratio);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 300);
@@ -264,6 +276,7 @@ function loadWorld(mapId, seed) {
     markers.set(sp.id, s);
   }
   world = { key: mapId + ':' + seed, map, ...w, markers };
+  if (!quality.shadows) world.sun.castShadow = false;
   cam.dist = mapId === 'maison' ? 6 : 7.5;
 }
 
@@ -295,7 +308,7 @@ function makeEnt(p) {
   ring.visible = false;
   root.add(ring);
   scene.add(root);
-  return { root, model, ring, charId: p.charId, isSeeker: null, label: null, labelKey: '', ghost: false, tp: -1, tx: p.x ?? 0, tz: p.z ?? 0, trot: 0, p };
+  return { root, model, ring, charId: p.charId, isSeeker: null, label: null, labelKey: '', ghost: false, tp: -1, buf: [], p };
 }
 
 function setLabel(e, text, bg) {
@@ -323,8 +336,13 @@ function syncEnts() {
     if (e.isSeeker !== p.isSeeker) { makeSeeker(e.model, p.isSeeker); e.ring.visible = p.isSeeker; e.isSeeker = p.isSeeker; }
     setLabel(e, p.isSeeker ? `🔍 ${p.name}` : p.found ? `✅ ${p.name}` : p.name, p.isSeeker ? 'rgba(210,20,30,.9)' : 'rgba(20,18,45,.8)');
     if (p.x != null) {
-      if (e.tp !== p.tp) { e.root.position.set(p.x, 0, p.z); e.tp = p.tp; }
-      e.tx = p.x; e.tz = p.z; e.trot = p.rot;
+      const now = performance.now();
+      if (e.tp !== p.tp) { e.root.position.set(p.x, 0, p.z); e.tp = p.tp; e.buf = []; }
+      const last = e.buf[e.buf.length - 1];
+      if (!last || last.x !== p.x || last.z !== p.z || last.rot !== p.rot || now - last.t > 250) {
+        e.buf.push({ t: now, x: p.x, z: p.z, rot: p.rot });
+        if (e.buf.length > 12) e.buf.shift();
+      }
     }
     e.p = p;
   }
@@ -332,7 +350,11 @@ function syncEnts() {
 }
 
 // ---------------- Réception de l'état ----------------
+const net = { last: 0, interval: 100 };
 function onState(s) {
+  const now = performance.now();
+  if (net.last) net.interval += (Math.min(500, now - net.last) - net.interval) * 0.1;
+  net.last = now;
   state = s;
   me = s.players.find((p) => p.id === session.myId) || null;
   if (!me) return;
@@ -506,26 +528,26 @@ function renderHud() {
   if (!me || !world) return;
   const s = state;
   const searching = s.phase === 'search';
-  $('phase-label').textContent = searching ? `🔍 Recherche · ${mapName(s.mapId)}` : '🫣 On se cache !';
-  $('timer').textContent = fmt(s.timeLeft);
+  setText($('phase-label'), searching ? `🔍 Recherche · ${mapName(s.mapId)}` : '🫣 On se cache !');
+  setText($('timer'), fmt(s.timeLeft));
   $('timer').classList.toggle('urgent', searching && s.timeLeft < 30);
   const hiders = s.players.filter((p) => !p.isSeeker);
   const left = hiders.filter((p) => !p.found).length;
-  $('remaining').textContent = `🙈 ${left}/${hiders.length}`;
+  setText($('remaining'), `🙈 ${left}/${hiders.length}`);
   const role = $('role');
   role.className = me.isSeeker ? 'seeker' : '';
-  role.innerHTML = me.isSeeker
+  setHTML(role, me.isSeeker
     ? `🔍 Tu es le CHERCHEUR<br><small>${esc(charName(me.charId))} · trouve tout le monde !</small>`
     : me.found ? '😵 Trouvé !<br><small>Tu regardes le chercheur…</small>'
-      : `🙈 Tu te caches<br><small>${esc(charName(me.charId))} · ne te fais pas trouver !</small>`;
-  $('hud-players').innerHTML = s.players.map((p) => {
+      : `🙈 Tu te caches<br><small>${esc(charName(me.charId))} · ne te fais pas trouver !</small>`);
+  setHTML($('hud-players'), s.players.map((p) => {
     let st = p.isSeeker ? '🔍' : p.found ? '✅' : p.hidden === -1 ? '❓' : p.hidden != null ? '🫣' : '🏃';
     return `<li class="${p.isSeeker ? 'seeker' : ''} ${p.found ? 'found' : ''}">${st} ${esc(p.name)} <small>· ${p.score + p.roundScore}</small></li>`;
-  }).join('');
+  }).join(''));
   // cécité du chercheur
   const blind = s.phase === 'hide' && me.isSeeker;
   $('blind').style.display = blind ? 'flex' : 'none';
-  $('blind-count').textContent = Math.ceil(s.timeLeft);
+  setText($('blind-count'), String(Math.ceil(s.timeLeft)));
   // panneau des cachettes
   const panel = s.phase === 'hide' && !me.isSeeker;
   $('hide-panel').style.display = panel ? 'block' : 'none';
@@ -699,7 +721,7 @@ function angleLerp(a, b, k) { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.
 function frame() {
   requestAnimationFrame(frame);
   const rawDt = clock.getDelta();
-  const dt = Math.min(rawDt, 0.05);
+  const dt = Math.min(rawDt, 0.1);
   const camDt = Math.min(rawDt, 0.25); // la caméra garde sa vitesse même si le téléphone est lent
   const t = clock.elapsedTime;
   if (!world || !state || !me) return;
@@ -740,12 +762,25 @@ function frame() {
     const self = p.id === session.myId;
     if (self) {
       e.root.position.set(myPos.x, 0, myPos.z);
-      e.root.rotation.y = angleLerp(e.root.rotation.y, myPos.rot, 0.3);
-    } else {
-      const k = 1 - Math.exp(-dt * 12);
-      e.root.position.x += (e.tx - e.root.position.x) * k;
-      e.root.position.z += (e.tz - e.root.position.z) * k;
-      e.root.rotation.y = angleLerp(e.root.rotation.y, e.trot, 0.2);
+      e.root.rotation.y = angleLerp(e.root.rotation.y, myPos.rot, 1 - Math.exp(-dt * 18));
+    } else if (e.buf.length) {
+      // on affiche les autres avec un léger retard, entre deux positions reçues : mouvement continu, sans à-coups
+      const rt = performance.now() - Math.min(260, Math.max(90, net.interval * 1.6));
+      const b = e.buf;
+      let x = b[b.length - 1].x, z = b[b.length - 1].z, rot = b[b.length - 1].rot;
+      if (rt <= b[0].t) ({ x, z, rot } = b[0]);
+      else for (let i = b.length - 1; i > 0; i--) {
+        if (b[i - 1].t <= rt && rt <= b[i].t) {
+          const k = (rt - b[i - 1].t) / Math.max(1, b[i].t - b[i - 1].t);
+          x = b[i - 1].x + (b[i].x - b[i - 1].x) * k;
+          z = b[i - 1].z + (b[i].z - b[i - 1].z) * k;
+          rot = angleLerp(b[i - 1].rot, b[i].rot, k);
+          break;
+        }
+      }
+      e.root.position.x = x;
+      e.root.position.z = z;
+      e.root.rotation.y = angleLerp(e.root.rotation.y, rot, 1 - Math.exp(-dt * 15));
     }
     const secret = p.hidden === -1 || p.x == null;
     e.root.visible = !secret && !(viewerSeeker && p.hidden != null);
@@ -793,7 +828,7 @@ function frame() {
   let dist = cam.dist;
   ray.set(cam.sTarget, dir);
   ray.far = dist;
-  const hit = ray.intersectObjects(world.blockers, true)[0];
+  const hit = ray.intersectObjects(world.blockers, false)[0];
   if (hit) dist = Math.max(1.2, hit.distance - 0.3);
   // un mur se rapproche : on avance tout de suite ; sinon on recule en douceur
   cam.sDist = dist < cam.sDist ? dist : cam.sDist + (dist - cam.sDist) * (1 - Math.exp(-camDt * 4));
@@ -801,11 +836,29 @@ function frame() {
   camera.lookAt(cam.sTarget);
 
   hudTimer -= dt;
-  if (hudTimer <= 0) { hudTimer = 0.1; updatePrompt(); if (state.phase === 'hide' || state.phase === 'search') { $('timer').textContent = fmt(state.timeLeft); } }
+  if (hudTimer <= 0) { hudTimer = 0.1; updatePrompt(); if (state.phase === 'hide' || state.phase === 'search') { setText($('timer'), fmt(state.timeLeft)); } }
   renderer.render(scene, camera);
+  adaptQuality(rawDt);
+}
+
+function adaptQuality(rawDt) {
+  quality.frames++;
+  quality.time += rawDt;
+  if (quality.time < 2.5) return;
+  const fps = quality.frames / quality.time;
+  quality.frames = 0; quality.time = 0;
+  if (fps >= 45) return;
+  if (quality.ratio > 1) {
+    quality.ratio = Math.max(1, quality.ratio - 0.25);
+    renderer.setPixelRatio(quality.ratio);
+    resize();
+  } else if (fps < 30 && quality.shadows && world?.sun) {
+    quality.shadows = false;
+    world.sun.castShadow = false;
+  }
 }
 frame();
-window.ccDebug = () => ({ session, state, cam });
+window.ccDebug = () => ({ session, state, cam, renderer, world });
 
 // rejoindre directement via un lien ?room=CODE
 if (params.get('room') && store.get('cc-name')) $('join-code').focus();

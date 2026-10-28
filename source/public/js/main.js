@@ -167,14 +167,17 @@ async function joinGame(code) {
 $('btn-join').onclick = () => joinGame($('join-code').value);
 
 // parties ouvertes (claude.ai et application web)
+$('games').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-code]');
+  if (btn && !btn.disabled) joinGame(btn.dataset.code);
+});
 if (ONLINE !== 'server') {
   (ONLINE === 'claude' ? getRoomApi() : getFirebaseApi()).then((api) => {
     if (!api) { $('games').innerHTML = '<p class="sub">Mode en ligne indisponible dans cette vue (il faut être connecté à claude.ai). Le solo fonctionne !</p>'; return; }
     watchGames(api, (games) => {
-      $('games').innerHTML = games.length
+      setHTML($('games'), games.length
         ? '<h3>Parties ouvertes</h3>' + games.map((g) => `<div class="game"><span><b>${esc(g.name)}</b> · ${g.count}/8 · code ${esc(g.code)}</span><button data-code="${esc(g.code)}" ${g.started || g.count >= 8 ? 'disabled' : ''}>${g.started ? 'En cours' : g.count >= 8 ? 'Pleine' : 'Rejoindre'}</button></div>`).join('')
-        : '<p class="sub">Aucune partie ouverte pour l\'instant. Crée-en une et invite tes amis !</p>';
-      for (const b of $('games').querySelectorAll('[data-code]')) b.onclick = () => joinGame(b.dataset.code);
+        : '<p class="sub">Aucune partie ouverte pour l\'instant. Crée-en une et invite tes amis !</p>');
     });
   }, (e) => { console.error(e); $('games').innerHTML = `<p class="sub">${esc(firebaseError(e))}</p>`; });
 }
@@ -228,6 +231,11 @@ function setupInvite(code) {
 }
 $('inv-link').onclick = () => $('inv-link').select();
 
+$('player-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-bot]');
+  if (btn && session) { session.send({ t: 'removeBot', id: btn.dataset.bot }); beep(500, 0.06); }
+});
+
 function renderLobby() {
   const isHost = state.hostId === session.myId;
   const solo = session instanceof LocalSession;
@@ -252,8 +260,7 @@ function renderLobby() {
     if (owner) tag.textContent = owner.name;
   }
   $('pcount').textContent = `(${state.players.length}/8)`;
-  $('player-list').innerHTML = state.players.map((p) => `<li>${p.charId ? `<img src="${thumbs[p.charId]}" alt="">` : '❔'}<span>${p.id === state.hostId ? '👑 ' : ''}${esc(p.name)}${p.id === session.myId ? ' (toi)' : ''}<br><small>${p.charId ? esc(charName(p.charId)) : 'choisit…'}</small></span>${isHost && p.isBot ? `<button class="x" data-bot="${p.id}">✕</button>` : ''}</li>`).join('');
-  for (const b of $('player-list').querySelectorAll('[data-bot]')) b.onclick = () => session.send({ t: 'removeBot', id: b.dataset.bot });
+  setHTML($('player-list'), state.players.map((p) => `<li>${p.charId ? `<img src="${thumbs[p.charId]}" alt="">` : '❔'}<span>${p.id === state.hostId ? '👑 ' : ''}${esc(p.name)}${p.id === session.myId ? ' (toi)' : ''}<br><small>${p.charId ? esc(charName(p.charId)) : 'choisit…'}</small></span>${isHost && p.isBot ? `<button class="x" data-bot="${p.id}" aria-label="Retirer ${esc(p.name)}">✕</button>` : ''}</li>`).join(''));
   $('host-controls').style.display = isHost ? '' : 'none';
   $('wait-host').style.display = isHost ? 'none' : '';
   $('rounds').value = String(state.totalRounds);
